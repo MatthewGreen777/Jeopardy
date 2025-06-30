@@ -6,8 +6,10 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QGridLayout, QPushButton, QLabel,
     QStackedLayout, QMessageBox, QSizePolicy
 )
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QPixmap, QMovie, QKeyEvent
+from PySide6.QtMultimedia import QMediaPlayer
+from PySide6.QtMultimediaWidgets import QVideoWidget
 
 class PlayGamePage(QWidget):
     def __init__(self, return_callback):
@@ -38,10 +40,8 @@ class PlayGamePage(QWidget):
         self.question_label.setWordWrap(True)
         self.question_label.setStyleSheet("font-size: 24px; color: white;")
         self.question_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.media_label = QLabel()
+        self.media_label = QLabel("")
         self.media_label.setAlignment(Qt.AlignCenter)
-        self.media_label.setScaledContents(True)
-        self.media_label.setMaximumSize(800, 600)
         question_layout = QVBoxLayout()
         question_layout.setAlignment(Qt.AlignCenter)
         question_layout.addWidget(self.question_label)
@@ -73,6 +73,13 @@ class PlayGamePage(QWidget):
         self.final_question_label.setStyleSheet("font-size: 24px; color: white;")
         self.final_layout.addWidget(self.final_question_label)
         self.stack.addWidget(self.final_widget)
+
+        self.video_player = QMediaPlayer()
+        self.video_widget = QVideoWidget()
+        self.video_player.setVideoOutput(self.video_widget)
+        self.stack.addWidget(self.video_widget)
+
+        self.audio_player = QMediaPlayer()
 
         self.setStyleSheet("background-color: #060CE9;")
 
@@ -147,10 +154,22 @@ class PlayGamePage(QWidget):
         questions = data['questions']
         self.questions_remaining = sum(len(questions[cat]) for cat in categories)
 
+        fixed_width = 160
+        category_height = 80
+        button_height = 80
+
         for col, category in enumerate(categories):
-            label = QLabel(category)
+            label = QLabel(self.wrap_text(category, 15))
             label.setAlignment(Qt.AlignCenter)
-            label.setStyleSheet("font-size: 18px; color: white;")
+            label.setWordWrap(True)
+            label.setFixedSize(fixed_width, category_height)
+            label.setStyleSheet("""
+                font-size: 18px;
+                color: white;
+                padding: 6px;
+                border: 2px solid #ffffff;
+                background-color: #000099;
+            """)
             self.board_layout.addWidget(label, 0, col)
 
         for row in range(5):
@@ -161,23 +180,54 @@ class PlayGamePage(QWidget):
                     if self.rounds[self.current_round_index] == "double":
                         value *= 2
                     btn = QPushButton(f"${value}")
-                    btn.setFixedSize(100, 50)
+                    btn.setFixedSize(fixed_width, button_height)
                     btn.setStyleSheet("""
                         QPushButton {
-                            background-color: #1E90FF;
-                            color: white;
-                            font-size: 16px;
+                            background-color: #0000cc;
+                            color: gold;
+                            font-size: 20px;
+                            font-weight: bold;
+                            border: 2px solid white;
+                        }
+                        QPushButton:hover {
+                            background-color: #0000ff;
                         }
                         QPushButton:disabled {
-                            background-color: #555;
+                            background-color: #222;
+                            color: #888;
+                            border: 2px solid gray;
                         }
                     """)
                     btn.clicked.connect(lambda _, c=category, r=row: self.show_question(c, r))
                     self.board_layout.addWidget(btn, row + 1, col)
                 else:
-                    self.board_layout.addWidget(QLabel(""), row + 1, col)
+                    spacer = QLabel("")
+                    spacer.setFixedSize(fixed_width, button_height)
+                    self.board_layout.addWidget(spacer, row + 1, col)
 
         self.stack.setCurrentWidget(self.board_widget)
+
+    def wrap_text(self, text, max_chars):
+        if len(text) <= max_chars:
+            return text
+
+        words = text.split()
+        lines = []
+        current_line = ""
+
+        for word in words:
+            if len(current_line) + len(word) + 1 <= max_chars:
+                if current_line:
+                    current_line += " "
+                current_line += word
+            else:
+                lines.append(current_line)
+                current_line = word
+
+        if current_line:
+            lines.append(current_line)
+
+        return '\n'.join(lines)
 
     def show_question(self, category, index):
         round_name = self.rounds[self.current_round_index]
@@ -219,40 +269,59 @@ class PlayGamePage(QWidget):
         round_name = self.rounds[self.current_round_index]
         question_data = self.round_data[round_name]["questions"][category][index]
         raw_text = question_data.get("question", "")
-        media = question_data.get("media")
+        media = None
 
-        # Handle inline [media:filename.ext] tag
         media_match = re.search(r"\[media:(.+?)\]", raw_text)
         if media_match:
             media = media_match.group(1)
             raw_text = re.sub(r"\[media:.+?\]", "", raw_text).strip()
 
         self.question_label.setText(raw_text)
+        self.media_label.clear()
+        
+        # Stop any playing media first
+        self.video_player.stop()
+        self.video_widget.hide()  # hide video widget if visible
+        self.audio_player.stop()
 
         if media:
             media_path = os.path.join(self.current_game_path, round_name, media)
             if os.path.exists(media_path):
-                if media.lower().endswith(".gif"):
+                ext = os.path.splitext(media_path)[1].lower()
+
+                if ext in [".png", ".jpg", ".jpeg", ".bmp"]:
+                    pixmap = QPixmap(media_path)
+                    self.media_label.setPixmap(pixmap.scaledToWidth(400, Qt.SmoothTransformation))
+
+                elif ext == ".gif":
                     movie = QMovie(media_path)
                     self.media_label.setMovie(movie)
                     movie.start()
+
+                elif ext in [".mp4", ".mov", ".avi"]:
+                    self.video_player.setSource(QUrl.fromLocalFile(media_path))
+                    self.video_widget.show()
+                    self.video_player.play()
+
+                elif ext in [".mp3", ".wav"]:
+                    self.audio_player.setSource(QUrl.fromLocalFile(media_path))
+                    self.audio_player.play()  # <-- Make sure this line is here!
+
                 else:
-                    pixmap = QPixmap(media_path)
-                    self.media_label.setPixmap(pixmap.scaledToWidth(400, Qt.SmoothTransformation))
+                    self.media_label.setText(f"⚠️ Unsupported media format: {media}")
             else:
                 self.media_label.setText(f"⚠️ Media not found: {media}")
-        else:
-            self.media_label.clear()
 
         self.stack.setCurrentWidget(self.question_widget)
 
-        # Define a function to return to board and remove the event handlers
         def handle_return():
             self.question_widget.mousePressEvent = lambda event: None
             self.question_widget.keyPressEvent = lambda event: None
+            self.video_player.stop()
+            self.audio_player.stop()
+            self.video_widget.hide()
             self.return_to_board(category, index)
 
-        # Set event handlers for mouse click and Enter key
         self.question_widget.mousePressEvent = lambda event: (
             handle_return() if event.button() == Qt.LeftButton else None
         )
@@ -260,8 +329,8 @@ class PlayGamePage(QWidget):
             handle_return() if event.key() in (Qt.Key_Return, Qt.Key_Enter) else None
         )
 
-        # Set focus so keyPressEvent will work
         self.question_widget.setFocus()
+
 
     def return_to_board(self, category, index):
         for i in range(self.board_layout.count()):

@@ -171,6 +171,5 @@ class JeopardyApp(QWidget):
         self.stack.setCurrentWidget(self.game_select_screen)
 
     def load_selected_game(self, game_path):
-        print(f"Selected game folder: {game_path}")
         self.play_game_page.load_game(game_path)  # Load the selected game data
         self.stack.setCurrentWidget(self.play_game_page)  # Switch to the game screen
