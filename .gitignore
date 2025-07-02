@@ -1,2 +1,6 @@
 /__pycache__
 /ui/__pycache__
+main.spec
+/dist
+/build
+/dev

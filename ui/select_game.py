@@ -4,6 +4,8 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QLabel, QMessageBox, QScrollArea, QFrame
 )
 from PySide6.QtCore import Qt
+from util import get_user_data_path
+from util import get_resource_path
 
 class GameSelectScreen(QWidget):
     def __init__(self, load_game_callback, return_callback):
@@ -57,20 +59,25 @@ class GameSelectScreen(QWidget):
             if widget:
                 widget.setParent(None)
 
-        games_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "games"))
-        if not os.path.isdir(games_dir):
-            QMessageBox.warning(self, "Error", f"Games directory not found: {games_dir}")
-            return
+        bundled_dir = get_resource_path("data/games")
+        user_dir = get_user_data_path("games")
 
-        game_folders = [f for f in os.listdir(games_dir) if os.path.isdir(os.path.join(games_dir, f))]
+        game_folders = set()
+        for path in [bundled_dir, user_dir]:
+            if os.path.isdir(path):
+                game_folders.update([
+                    os.path.join(path, f) for f in os.listdir(path)
+                    if os.path.isdir(os.path.join(path, f))
+                ])
 
         if not game_folders:
             label = QLabel("No games available.")
             label.setAlignment(Qt.AlignCenter)
             self.scroll_layout.addWidget(label)
         else:
-            for folder in game_folders:
-                button = QPushButton(folder)
+            for folder_path in game_folders:
+                folder_name = os.path.basename(folder_path)
+                button = QPushButton(folder_name)
                 button.setFixedHeight(40)
                 button.setStyleSheet("""
                     QPushButton {
@@ -83,13 +90,12 @@ class GameSelectScreen(QWidget):
                         background-color: #72729c;
                     }
                 """)
-                button.clicked.connect(lambda _, f=folder: self.select_game(f))
+                button.clicked.connect(lambda _, path=folder_path: self.select_game(path))
                 self.scroll_layout.addWidget(button)
 
-    def select_game(self, folder):
-        games_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "games"))
-        full_path = os.path.join(games_dir, folder)
-        self.load_game_callback(full_path)
+    def select_game(self, folder_path):
+        self.load_game_callback(folder_path)
+
 
     def showEvent(self, event):
         super().showEvent(event)

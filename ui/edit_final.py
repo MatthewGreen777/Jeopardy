@@ -5,6 +5,8 @@ from PySide6.QtWidgets import (
     QMessageBox, QInputDialog, QLineEdit, QLabel, QFileDialog, QDialog
 )
 from PySide6.QtCore import Qt
+from util import get_user_data_path
+from util import get_resource_path
 
 class FinalQuestionDialog(QDialog):
     def __init__(self, existing_text="", existing_media=""):
@@ -151,12 +153,16 @@ class EditFinalPage(QWidget):
         if not ok or not filename.strip():
             return
 
-        filename = filename.strip()
-        save_dir = os.path.join(os.path.dirname(__file__), "..", "data", "finals")
+        final_name = filename.strip()
+        save_dir = get_user_data_path("finals")
         os.makedirs(save_dir, exist_ok=True)
-        final_folder = os.path.join(save_dir, filename)
-        os.makedirs(final_folder, exist_ok=True)
-        csv_path = os.path.join(save_dir, f"{filename}.csv")
+
+        # Save CSV path
+        csv_path = os.path.join(save_dir, f"{final_name}.csv")
+
+        # Create dedicated folder for media (named same as file without extension)
+        media_folder = os.path.join(save_dir, final_name)
+        os.makedirs(media_folder, exist_ok=True)
 
         try:
             with open(csv_path, mode="w", newline='', encoding="utf-8") as file:
@@ -165,15 +171,17 @@ class EditFinalPage(QWidget):
                 if self.media_path:
                     media_name = os.path.basename(self.media_path)
                     entry += f" [media:{media_name}]"
-                    dest_path = os.path.join(final_folder, media_name)
+                    dest_path = os.path.join(media_folder, media_name)
                     if not os.path.exists(dest_path):
                         with open(self.media_path, "rb") as src, open(dest_path, "wb") as dst:
                             dst.write(src.read())
                 writer.writerow([self.category])
                 writer.writerow([entry])
-            QMessageBox.information(self, "Saved", f"Final question saved in '{final_folder}'!")
+
+            QMessageBox.information(self, "Saved", f"Final question saved as '{final_name}.csv'!")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save: {str(e)}")
+
 
     def confirm_back_to_menu(self):
         confirm = QMessageBox.question(
@@ -199,19 +207,24 @@ class EditFinalPage(QWidget):
                 self.category = rows[0][0].strip()
                 raw_question = rows[1][0].strip()
 
-                # Extract media path if included
+                # Handle possible media tag
                 media_path = None
                 if "[media:" in raw_question and raw_question.endswith("]"):
                     try:
                         question_part, media_tag = raw_question.rsplit(" [media:", 1)
                         media_filename = media_tag[:-1]  # remove trailing ']'
-                        folder = os.path.splitext(file_path)[0]  # same name folder
-                        possible_media_path = os.path.join(folder, media_filename)
+
+                        # Look for media in folder named after the file (same name as CSV, no extension)
+                        final_name = os.path.splitext(os.path.basename(file_path))[0]
+                        media_folder = os.path.join(get_user_data_path("finals"), final_name)
+                        possible_media_path = os.path.join(media_folder, media_filename)
+
                         if os.path.exists(possible_media_path):
                             media_path = possible_media_path
+
                         self.question = question_part.strip()
                     except Exception:
-                        self.question = raw_question  # fallback
+                        self.question = raw_question  # fallback if media tag fails
                         media_path = None
                 else:
                     self.question = raw_question

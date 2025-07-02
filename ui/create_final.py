@@ -5,6 +5,8 @@ from PySide6.QtWidgets import (
     QMessageBox, QInputDialog, QLineEdit, QLabel, QFileDialog, QDialog
 )
 from PySide6.QtCore import Qt
+from util import get_user_data_path
+from util import get_resource_path
 
 
 class FinalQuestionDialog(QDialog):
@@ -156,27 +158,26 @@ class CreateFinalPage(QWidget):
         if not ok or not filename.strip():
             return
 
-        filename = filename.strip()
-        save_dir = os.path.join(os.path.dirname(__file__), "..", "data", "finals")
-        os.makedirs(save_dir, exist_ok=True)
-        final_folder = os.path.join(save_dir, filename)
-        os.makedirs(final_folder, exist_ok=True)
-        csv_path = os.path.join(save_dir, f"{filename}.csv")
+        final_name = filename.strip()
+        save_dir = get_user_data_path("finals")
+        board_folder = os.path.join(save_dir, final_name)
+        os.makedirs(board_folder, exist_ok=True)
+        filepath = os.path.join(board_folder, f"{final_name}.csv")
 
         try:
-            with open(csv_path, mode="w", newline='', encoding="utf-8") as file:
+            with open(filepath, mode="w", newline='', encoding="utf-8") as file:
                 writer = csv.writer(file)
                 entry = self.question
                 if self.media_path:
                     media_name = os.path.basename(self.media_path)
                     entry += f" [media:{media_name}]"
-                    dest_path = os.path.join(final_folder, media_name)
+                    dest_path = os.path.join(board_folder, media_name)
                     if not os.path.exists(dest_path):
                         with open(self.media_path, "rb") as src, open(dest_path, "wb") as dst:
                             dst.write(src.read())
                 writer.writerow([self.category])
                 writer.writerow([entry])
-            QMessageBox.information(self, "Saved", f"Final question saved in '{final_folder}'!")
+            QMessageBox.information(self, "Saved", f"Final question saved in '{board_folder}'!")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save: {str(e)}")
 

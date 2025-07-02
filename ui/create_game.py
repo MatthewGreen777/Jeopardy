@@ -4,6 +4,8 @@ from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QMessageBox, QInputDialog
 )
 from PySide6.QtCore import Qt
+from util import get_user_data_path
+from util import get_resource_path
 
 class CreateGamePage(QWidget):
     def __init__(self, return_to_menu_callback, edit_board_select_callback, edit_final_select_callback):
@@ -106,17 +108,15 @@ class CreateGamePage(QWidget):
             return
 
         game_name = game_name.strip()
-        base_dir = os.path.join(os.path.dirname(__file__), "..", "data", "games")
+        base_dir = get_user_data_path("games")
         game_folder = os.path.join(base_dir, game_name)
         os.makedirs(game_folder, exist_ok=True)
 
         try:
             def copy_round(path, dest_name):
-                # Copy CSV
                 dest_csv = os.path.join(game_folder, f"{dest_name}.csv")
                 shutil.copy2(path, dest_csv)
 
-                # Copy subfolder if it exists
                 base_name = os.path.splitext(os.path.basename(path))[0]
                 original_subfolder = os.path.join(os.path.dirname(path), base_name)
                 if os.path.exists(original_subfolder) and os.path.isdir(original_subfolder):
@@ -129,7 +129,6 @@ class CreateGamePage(QWidget):
             copy_round(self.double_jeopardy_path, "double")
             copy_round(self.final_path, "final")
 
-            # Save order.csv
             with open(os.path.join(game_folder, "order.csv"), "w", encoding="utf-8") as f:
                 f.write("jeopardy.csv\ndouble.csv\nfinal.csv\n")
 

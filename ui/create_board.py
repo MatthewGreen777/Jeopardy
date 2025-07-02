@@ -5,6 +5,8 @@ from PySide6.QtWidgets import (
     QMessageBox, QInputDialog, QDialog, QLineEdit, QLabel, QFileDialog
 )
 from PySide6.QtCore import Qt
+from util import get_user_data_path
+from util import get_resource_path
 
 class QuestionDialog(QDialog):
     def __init__(self, existing_text="", existing_media_path=""):
@@ -173,11 +175,10 @@ class CreateBoardPage(QWidget):
             return
 
         board_name = filename.strip()
-        save_dir = os.path.join(os.path.dirname(__file__), "..", "data", "boards")
-        save_dir = os.path.abspath(save_dir)
-        board_folder = os.path.join(save_dir, board_name)
-        os.makedirs(board_folder, exist_ok=True)
+        save_dir = get_user_data_path("boards")
         filepath = os.path.join(save_dir, f"{board_name}.csv")
+        media_folder = os.path.join(save_dir, board_name)
+        os.makedirs(media_folder, exist_ok=True)
 
         try:
             with open(filepath, mode="w", newline='', encoding="utf-8") as file:
@@ -194,7 +195,7 @@ class CreateBoardPage(QWidget):
                             if media:
                                 media_filename = os.path.basename(media)
                                 entry += f" [media:{media_filename}]"
-                                dest_path = os.path.join(board_folder, media_filename)
+                                dest_path = os.path.join(media_folder, media_filename)
                                 if not os.path.exists(dest_path):
                                     try:
                                         with open(media, "rb") as src, open(dest_path, "wb") as dst:
@@ -206,7 +207,7 @@ class CreateBoardPage(QWidget):
                             row_data.append("")
                     writer.writerow(row_data)
 
-            QMessageBox.information(self, "Saved", f"Board saved in '{board_folder}'!")
+            QMessageBox.information(self, "Saved", f"Board saved as '{board_name}.csv' with media in '{board_name}/'")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save board: {str(e)}")
 

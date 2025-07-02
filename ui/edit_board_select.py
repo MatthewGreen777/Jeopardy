@@ -4,6 +4,8 @@ from PySide6.QtWidgets import (
     QScrollArea, QFrame
 )
 from PySide6.QtCore import Qt
+from util import get_user_data_path
+from util import get_resource_path
 
 class EditBoardSelectPage(QWidget):
     def __init__(self, load_board_callback, return_to_menu_callback):
@@ -29,7 +31,7 @@ class EditBoardSelectPage(QWidget):
         scroll_layout = QVBoxLayout(scroll_content)
         scroll_layout.setSpacing(10)
 
-        boards_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "boards"))
+        boards_dir = get_user_data_path("boards")
         if not os.path.isdir(boards_dir):
             QMessageBox.warning(self, "Error", f"Boards directory not found: {boards_dir}")
             return
@@ -78,6 +80,6 @@ class EditBoardSelectPage(QWidget):
         main_layout.addWidget(back_button)
 
     def select_board(self, filename):
-        boards_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "boards"))
+        boards_dir = get_user_data_path("boards")
         filepath = os.path.join(boards_dir, filename)
         self.load_board_callback(filepath)

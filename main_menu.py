@@ -2,7 +2,6 @@ from PySide6.QtWidgets import (
     QWidget, QPushButton, QVBoxLayout, QLabel, QStackedLayout
 )
 from PySide6.QtCore import Qt
-import os
 
 # Import the different pages used in the Jeopardy app
 from ui.create_board import CreateBoardPage

@@ -4,6 +4,8 @@ from PySide6.QtWidgets import (
     QScrollArea, QFrame
 )
 from PySide6.QtCore import Qt
+from util import get_user_data_path
+from util import get_resource_path
 
 class EditFinalSelectPage(QWidget):
     def __init__(self, load_callback, back_callback):
@@ -29,7 +31,7 @@ class EditFinalSelectPage(QWidget):
         scroll_layout = QVBoxLayout(scroll_content)
         scroll_layout.setSpacing(10)
 
-        finals_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "finals"))
+        finals_dir = get_user_data_path("finals")
         if not os.path.isdir(finals_dir):
             QMessageBox.warning(self, "Error", f"Finals directory not found: {finals_dir}")
             return
@@ -78,6 +80,6 @@ class EditFinalSelectPage(QWidget):
         main_layout.addWidget(back_button)
 
     def select_final(self, filename):
-        finals_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "finals"))
+        finals_dir = get_user_data_path("finals")
         filepath = os.path.join(finals_dir, filename)
         self.load_callback(filepath)

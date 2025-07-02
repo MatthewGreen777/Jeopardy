@@ -10,6 +10,8 @@ from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QPixmap, QMovie, QKeyEvent
 from PySide6.QtMultimedia import QMediaPlayer
 from PySide6.QtMultimediaWidgets import QVideoWidget
+from util import get_user_data_path
+from util import get_resource_path
 
 class PlayGamePage(QWidget):
     def __init__(self, return_callback):
